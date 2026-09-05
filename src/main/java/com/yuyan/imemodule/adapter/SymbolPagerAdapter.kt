@@ -9,7 +9,6 @@ import com.google.android.flexbox.FlexDirection
 import com.google.android.flexbox.FlexWrap
 import com.google.android.flexbox.JustifyContent
 import com.yuyan.imemodule.R
-import com.yuyan.imemodule.data.emojicon.YuyanEmojiCompat
 import com.yuyan.imemodule.database.DataBaseKT
 import com.yuyan.imemodule.prefs.behavior.SymbolMode
 import com.yuyan.imemodule.manager.layout.CustomFlexboxLayoutManager
@@ -40,7 +39,7 @@ class SymbolPagerAdapter(context: Context, private val mDatas: Map<Int, List<Str
     override fun onBindViewHolder(holder: ViewHolder, position: Int) {
         val item = when (val key = mDatas.keys.toList()[position]) {
             R.drawable.icon_emojibar_recents -> {
-                if (viewType != SymbolMode.Symbol) DataBaseKT.instance.usedSymbolDao().getAllSymbolEmoji().map { it.symbol }.takeIf { it.isNotEmpty() } ?: mDatas[mDatas.keys.toList()[if(YuyanEmojiCompat.isWeChatInput) 2 else 1]]
+                if (viewType != SymbolMode.Symbol) DataBaseKT.instance.usedSymbolDao().getAllSymbolEmoji().map { it.symbol }.takeIf { it.isNotEmpty() } ?: mDatas[mDatas.keys.toList()[1]]
                 else DataBaseKT.instance.usedSymbolDao().getAllUsedSymbol().map { it.symbol }.takeIf { it.isNotEmpty() } ?: mDatas[mDatas.keys.toList()[1]]
             }
             else -> mDatas[key]
@@ -48,7 +47,7 @@ class SymbolPagerAdapter(context: Context, private val mDatas: Map<Int, List<Str
         val manager = CustomFlexboxLayoutManager(mContext)
         manager.flexDirection = FlexDirection.ROW
         manager.flexWrap = FlexWrap.WRAP
-        manager.justifyContent = JustifyContent.SPACE_AROUND
+        manager.justifyContent = if (viewType == SymbolMode.Emojicon) JustifyContent.FLEX_START else JustifyContent.SPACE_AROUND
         holder.emojiGroupRv.layoutManager = manager
         val mSymbolAdapter = SymbolAdapter(mContext, viewType, position, onClickSymbol)
         mSymbolAdapter.mDatas = item

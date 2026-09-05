@@ -7,17 +7,14 @@ import android.view.View
 import android.view.ViewGroup
 import splitties.dimensions.dp
 import android.widget.TextView
-import androidx.core.view.setMargins
 import androidx.emoji2.widget.EmojiTextView
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.flexbox.FlexboxLayoutManager
 import com.yuyan.imemodule.R
-import com.yuyan.imemodule.data.emojicon.YuyanEmojiCompat
 import com.yuyan.imemodule.data.theme.ThemeManager.activeTheme
 import com.yuyan.imemodule.prefs.AppPrefs
 import com.yuyan.imemodule.prefs.behavior.HalfWidthSymbolsMode
 import com.yuyan.imemodule.prefs.behavior.SymbolMode
-import com.yuyan.imemodule.singleton.EnvironmentSingleton
 import com.yuyan.imemodule.singleton.EnvironmentSingleton.Companion.instance
 import com.yuyan.imemodule.utils.StringUtils
 
@@ -62,20 +59,23 @@ class SymbolAdapter(context: Context?, val viewType: SymbolMode, private val pag
         var tVSdb: TextView
         init {
             textView.setTextColor(activeTheme.keyTextColor)
-            textView.setTextSize(TypedValue.COMPLEX_UNIT_DIP, instance.candidateTextSize * if(viewType != SymbolMode.Emojicon)1f else 0.9f)
             tVSdb = view.findViewById(R.id.tv_sdb_symbols_item)
             tVSdb.setTextColor(activeTheme.keyTextColor)
-            if(viewType == SymbolMode.Emojicon && pagerIndex == 1 && YuyanEmojiCompat.isWeChatInput){
-                (view.layoutParams as FlexboxLayoutManager.LayoutParams) .apply {
-                    width = (EnvironmentSingleton.instance.skbWidth - view.dp(18)) / 3
-                   setMargins(view.dp(3))
+            when {
+                viewType == SymbolMode.Emojicon -> {
+                    textView.setTextSize(TypedValue.COMPLEX_UNIT_DIP, instance.candidateTextSize)
+                    val cellSize = instance.skbWidth / 8
+                    (view.layoutParams as FlexboxLayoutManager.LayoutParams).apply {
+                        minWidth = cellSize
+                        minHeight = (cellSize * 0.9f).toInt()
+                    }
+                    val pad = view.dp(4)
+                    textView.setPadding(pad, pad, pad, pad)
                 }
-               val paddingStart =  view.dp(5)
-               val paddingTop =  view.dp(10)
-                textView.setPadding(paddingStart, paddingTop, paddingStart, paddingTop)
-                view.setBackgroundResource(R.drawable.shape_emojicon_background)
+                else -> {
+                    textView.setTextSize(TypedValue.COMPLEX_UNIT_DIP, instance.candidateTextSize)
+                }
             }
-
         }
     }
 }
