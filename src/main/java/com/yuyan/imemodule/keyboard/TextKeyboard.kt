@@ -80,7 +80,7 @@ open class TextKeyboard(context: Context?) : BaseKeyboardView(context){
         var softKey = mSoftKeyboard?.getKeyByCode(KeyEvent.KEYCODE_ENTER) as? SoftKeyToggle
         softKey?.enableToggleState( if(mService!!.isAddPhrases)4 else InputModeSwitcher.mToggleStates.imeAction)
         softKey = mSoftKeyboard?.getKeyByCode(KeyEvent.KEYCODE_SHIFT_LEFT) as? SoftKeyToggle
-        val isEnglishCell = AppPrefs.getInstance().input.abcSearchEnglishCell.getValue()
+        val isEnglishCell = InputModeSwitcher.isEnglishCellEnabled
         softKey?.enableToggleState(InputModeSwitcher.mToggleStates.modifiers + if(isEnglishCell) 3 else 0)
         invalidateView()
     }

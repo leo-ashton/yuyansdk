@@ -190,6 +190,15 @@ object InputModeSwitcher {
     private var mInputMode = MODE_UNSET
 
     /**
+     * 当前编辑框声明不需要英文联想（TYPE_NULL、NO_SUGGESTIONS、密码/网址等）。
+     */
+    var suppressAsciiSuggestions = false
+        private set
+
+    val isEnglishCellEnabled: Boolean
+        get() = getInstance().input.abcSearchEnglishCell.getValue() && !suppressAsciiSuggestions
+
+    /**
      * Used to remember recent mode to input language. 最近的语言输入法模式
      */
     private var mRecentLauageInputMode = MODE_UNSET
@@ -216,6 +225,7 @@ object InputModeSwitcher {
      * 根据编辑框的 EditorInfo 信息获取软键盘的输入法模式。
      */
     fun requestInputWithSkb(editorInfo: EditorInfo) {
+        suppressAsciiSuggestions = InputFieldPolicy.shouldSuppressAsciiSuggestions(editorInfo)
         var newInputMode: Int
         when (editorInfo.inputType and EditorInfo.TYPE_MASK_CLASS) {
             EditorInfo.TYPE_CLASS_NUMBER, EditorInfo.TYPE_CLASS_PHONE, EditorInfo.TYPE_CLASS_DATETIME -> newInputMode = MASK_SKB_LAYOUT_NUMBER
@@ -362,6 +372,7 @@ object InputModeSwitcher {
     fun reset( ) {
         mInputMode = MODE_UNSET
         mRecentLauageInputMode = MODE_UNSET
+        suppressAsciiSuggestions = false
     }
 
 }

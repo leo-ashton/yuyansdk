@@ -342,7 +342,7 @@ class InputView(context: Context, private val service: ImeService) : LifecycleRe
             return true
         }
         InputModeSwitcher.resetCharCase()
-        val englishCellDisable = InputModeSwitcher.isEnglish && !appPrefs.input.abcSearchEnglishCell.getValue()
+        val englishCellDisable = InputModeSwitcher.isEnglish && !InputModeSwitcher.isEnglishCellEnabled
         return when {
             englishCellDisable -> processEnglishKey(event)
             InputModeSwitcher.isEnglish || InputModeSwitcher.isChinese -> processInput(event)
@@ -744,7 +744,7 @@ class InputView(context: Context, private val service: ImeService) : LifecycleRe
                 if (textBeforeCursor.isBlank()) resetCandidateWindow()
                 else CustomEngine.parseExpressionAtEnd(textBeforeCursor).let { CustomEngine.expressionCalculator(textBeforeCursor, it).let(::showSymbols) }
             }
-            chinesePrediction && InputModeSwitcher.isChinese-> {
+            chinesePrediction && InputModeSwitcher.isChinese && !InputModeSwitcher.suppressAsciiSuggestions -> {
                 val textBeforeCursor = service.getTextBeforeCursor(10)
                 if (textBeforeCursor.isBlank()) resetCandidateWindow()
                 else {
