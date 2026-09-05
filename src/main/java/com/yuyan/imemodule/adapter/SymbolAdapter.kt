@@ -2,6 +2,7 @@ package com.yuyan.imemodule.adapter
 
 import android.content.Context
 import android.util.TypedValue
+import android.view.Gravity
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -9,7 +10,6 @@ import splitties.dimensions.dp
 import android.widget.TextView
 import androidx.emoji2.widget.EmojiTextView
 import androidx.recyclerview.widget.RecyclerView
-import com.google.android.flexbox.FlexboxLayoutManager
 import com.yuyan.imemodule.R
 import com.yuyan.imemodule.data.theme.ThemeManager.activeTheme
 import com.yuyan.imemodule.prefs.AppPrefs
@@ -17,6 +17,7 @@ import com.yuyan.imemodule.prefs.behavior.HalfWidthSymbolsMode
 import com.yuyan.imemodule.prefs.behavior.SymbolMode
 import com.yuyan.imemodule.singleton.EnvironmentSingleton.Companion.instance
 import com.yuyan.imemodule.utils.StringUtils
+import kotlin.math.min
 
 /**
  * 表情或符号界面适配器
@@ -63,14 +64,26 @@ class SymbolAdapter(context: Context?, val viewType: SymbolMode, private val pag
             tVSdb.setTextColor(activeTheme.keyTextColor)
             when {
                 viewType == SymbolMode.Emojicon -> {
-                    textView.setTextSize(TypedValue.COMPLEX_UNIT_DIP, instance.candidateTextSize)
-                    val cellSize = instance.skbWidth / 8
-                    (view.layoutParams as FlexboxLayoutManager.LayoutParams).apply {
-                        minWidth = cellSize
-                        minHeight = (cellSize * 0.9f).toInt()
-                    }
-                    val pad = view.dp(4)
+                    val cellDp = 40
+                    val padDp = 4
+                    val defaultCandidateSize = instance.candidateTextSize * 55f /
+                        AppPrefs.getInstance().keyboardSetting.candidateTextSize.getValue()
+                    textView.includeFontPadding = false
+                    textView.gravity = Gravity.CENTER
+                    textView.setTextSize(
+                        TypedValue.COMPLEX_UNIT_DIP,
+                        min(defaultCandidateSize, (cellDp - padDp * 2).toFloat())
+                    )
+                    val pad = view.dp(padDp)
                     textView.setPadding(pad, pad, pad, pad)
+                    textView.layoutParams = textView.layoutParams.apply {
+                        width = ViewGroup.LayoutParams.MATCH_PARENT
+                        height = ViewGroup.LayoutParams.MATCH_PARENT
+                    }
+                    view.layoutParams = view.layoutParams.apply {
+                        width = ViewGroup.LayoutParams.MATCH_PARENT
+                        height = view.dp(cellDp)
+                    }
                 }
                 else -> {
                     textView.setTextSize(TypedValue.COMPLEX_UNIT_DIP, instance.candidateTextSize)

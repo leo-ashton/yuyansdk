@@ -10,8 +10,12 @@ import com.google.android.flexbox.FlexWrap
 import com.google.android.flexbox.JustifyContent
 import com.yuyan.imemodule.R
 import com.yuyan.imemodule.database.DataBaseKT
-import com.yuyan.imemodule.prefs.behavior.SymbolMode
 import com.yuyan.imemodule.manager.layout.CustomFlexboxLayoutManager
+import com.yuyan.imemodule.manager.layout.CustomGridLayoutManager
+import com.yuyan.imemodule.prefs.behavior.SymbolMode
+import com.yuyan.imemodule.singleton.EnvironmentSingleton.Companion.instance
+import splitties.dimensions.dp
+import kotlin.math.max
 
 /**
  * 表情或符号界面适配器
@@ -44,11 +48,15 @@ class SymbolPagerAdapter(context: Context, private val mDatas: Map<Int, List<Str
             }
             else -> mDatas[key]
         }
-        val manager = CustomFlexboxLayoutManager(mContext)
-        manager.flexDirection = FlexDirection.ROW
-        manager.flexWrap = FlexWrap.WRAP
-        manager.justifyContent = if (viewType == SymbolMode.Emojicon) JustifyContent.FLEX_START else JustifyContent.SPACE_AROUND
-        holder.emojiGroupRv.layoutManager = manager
+        holder.emojiGroupRv.layoutManager = if (viewType == SymbolMode.Emojicon) {
+            CustomGridLayoutManager(mContext, max(1, instance.skbWidth / mContext.dp(40)))
+        } else {
+            CustomFlexboxLayoutManager(mContext).apply {
+                flexDirection = FlexDirection.ROW
+                flexWrap = FlexWrap.WRAP
+                justifyContent = JustifyContent.SPACE_AROUND
+            }
+        }
         val mSymbolAdapter = SymbolAdapter(mContext, viewType, position, onClickSymbol)
         mSymbolAdapter.mDatas = item
         holder.emojiGroupRv.adapter = mSymbolAdapter
