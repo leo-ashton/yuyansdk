@@ -178,6 +178,7 @@ object RimeEngine {
             }
             showComposition = ""
             showCandidates = emptyList()
+            pinyins = emptyArray()
             return preCommitText
         }
         val candidates = Rime.getRimeContext()?.candidates?.asList() ?: emptyList()

@@ -661,6 +661,9 @@ class InputView(context: Context, private val service: ImeService) : LifecycleRe
                 service.finishComposingText()
                 if(appPrefs.input.abcSpaceAuto.getValue()) service.commitText(" ")
                 resetToIdleState()
+            } else if (!chinesePrediction || InputModeSwitcher.suppressAsciiSuggestions) {
+                // TYPE_NULL / NO_SUGGESTIONS 等字段往往没有可用的选区回调，不能再等 onUpdateSelection 清左侧拼音栏
+                resetToIdleState()
             }
         }
     }
