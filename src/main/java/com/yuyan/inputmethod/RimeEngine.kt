@@ -214,13 +214,12 @@ object RimeEngine {
 
     private fun applyCharCase(text: String, casePattern: String = compositionCasePattern): String {
         val lowercaseText = text.lowercase()
-        return if (charCase == KeyEvent.META_CAPS_LOCK_ON) {
-            lowercaseText.uppercase()
-        } else {
-            buildString(lowercaseText.length) {
-                lowercaseText.forEachIndexed { index, char ->
-                    append(if (casePattern.getOrNull(index)?.isUpperCase() == true) char.uppercaseChar() else char)
-                }
+        if (charCase == KeyEvent.META_CAPS_LOCK_ON) return lowercaseText.uppercase()
+        // 九键等布局会用大写键码表示按键，不能将其当作用户实际选择的大写。
+        if (getCurrentRimeSchema() != CustomConstant.SCHEMA_EN) return lowercaseText
+        return buildString(lowercaseText.length) {
+            lowercaseText.forEachIndexed { index, char ->
+                append(if (casePattern.getOrNull(index)?.isUpperCase() == true) char.uppercaseChar() else char)
             }
         }
     }
