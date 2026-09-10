@@ -362,6 +362,7 @@ object InputModeSwitcher {
     fun resetCharCase() {
         if(mToggleStates.modifiers == KeyEvent.META_SHIFT_ON){
             mToggleStates.modifiers = MASK_CASE_LOWER
+            Kernel.setCharCase(MASK_CASE_LOWER)
             (KeyboardManager.instance.currentContainer as? InputBaseContainer)?.updateStates()
         }
     }

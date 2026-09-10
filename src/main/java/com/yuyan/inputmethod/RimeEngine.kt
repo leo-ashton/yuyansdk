@@ -14,7 +14,6 @@ import com.yuyan.inputmethod.util.DoublePinYinUtils
 import com.yuyan.inputmethod.util.LX17PinYinUtils
 import com.yuyan.inputmethod.util.QwertyPinYinUtils
 import com.yuyan.inputmethod.util.T9PinYinUtils
-import java.util.Locale
 
 object RimeEngine {
     private val keyRecordStack = KeyRecordStack()
@@ -25,6 +24,9 @@ object RimeEngine {
     private var customPhraseSize: Int = 0 // 自定义引擎候选词长度
     const val MASK_CASE_LOWER = 0
     private var charCase = 0x0000
+    // Rime 的候选词通常为小写；保留用户在当前输入串中逐字指定的大小写。
+    private var compositionCasePattern = ""
+
     fun init() {
         Rime.getInstance(false)
     }
@@ -32,6 +34,7 @@ object RimeEngine {
     fun selectSchema(mod: String): Boolean {
         keyRecordStack.clear()
         charCase = MASK_CASE_LOWER
+        compositionCasePattern = ""
         Rime.startup(Launcher.instance.context, false)
         return Rime.selectSchema(mod)
     }
@@ -51,8 +54,13 @@ object RimeEngine {
         val keyCode = event.keyCode
         val keyChar = if(keyCode == KeyEvent.KEYCODE_APOSTROPHE) if(isFinish()) '/'.code else '\''.code
             else event.unicodeChar
+        val commitCasePattern = if (keyCode in KeyEvent.KEYCODE_A..KeyEvent.KEYCODE_Z) {
+            Rime.compositionText + keyChar.toChar()
+        } else {
+            compositionCasePattern
+        }
         if (keyRecordStack.pushKey(event))Rime.processKey(keyChar, event.action)
-        updateCandidatesOrCommitText()
+        updateCandidatesOrCommitText(commitCasePattern)
     }
 
     fun onDeleteKey() {
@@ -71,22 +79,8 @@ object RimeEngine {
         return if (Rime.hasRight()) {
             Rime.processKey(getRimeKeycodeByName("Page_Down"), 0)
            val candidates = Rime.getRimeContext()!!.candidates
-            when (charCase) {
-                KeyEvent.META_SHIFT_ON -> {
-                    for (item in candidates) {
-                        item.text = item.text.lowercase().replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.getDefault()) else it.toString() }
-                    }
-                }
-                KeyEvent.META_CAPS_LOCK_ON -> {
-                    for (item in candidates) {
-                        item.text = item.text.uppercase()
-                    }
-                }
-                else -> {
-                    for (item in candidates) {
-                        item.text = item.text.lowercase()
-                    }
-                }
+            for (item in candidates) {
+                item.text = applyCharCase(item.text)
             }
             candidates
         } else emptyArray()
@@ -128,6 +122,7 @@ object RimeEngine {
         keyRecordStack.clear()
         Rime.clearComposition()
         if(charCase == KeyEvent.META_SHIFT_ON) charCase = MASK_CASE_LOWER
+        compositionCasePattern = ""
     }
 
     fun destroy() = Rime.destroy()
@@ -164,18 +159,12 @@ object RimeEngine {
         }
     }
 
-    private fun updateCandidatesOrCommitText(): String? {
+    private fun updateCandidatesOrCommitText(commitCasePattern: String = compositionCasePattern): String? {
         val rimeCommit = Rime.getRimeCommit()
         if (rimeCommit != null) {
             keyRecordStack.clear()
-            preCommitText = rimeCommit.commitText
-            preCommitText = if (charCase == KeyEvent.META_SHIFT_ON) {
-                preCommitText.lowercase().replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.getDefault()) else it.toString() }
-            } else if (charCase == KeyEvent.META_CAPS_LOCK_ON) {
-                preCommitText.uppercase()
-            } else {
-                preCommitText.lowercase()
-            }
+            preCommitText = applyCharCase(rimeCommit.commitText, commitCasePattern)
+            compositionCasePattern = ""
             showComposition = ""
             showCandidates = emptyList()
             pinyins = emptyArray()
@@ -184,6 +173,7 @@ object RimeEngine {
         val candidates = Rime.getRimeContext()?.candidates?.asList() ?: emptyList()
         customPhraseSize = 0
         val compositionText = Rime.compositionText
+        if (compositionText.isNotEmpty()) compositionCasePattern = compositionText
         showCandidates = when {
             compositionText.isNotBlank() -> {
                 val phrase = CustomEngine.processPhrase(compositionText.replace("\'", ""))
@@ -203,20 +193,8 @@ object RimeEngine {
             }
         }
         var composition = getCurrentComposition(candidates)
-        when (charCase) {
-            KeyEvent.META_SHIFT_ON -> {
-                for (item in showCandidates) item.text = item.text.lowercase().replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.getDefault()) else it.toString() }
-                composition = composition.lowercase().replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.getDefault()) else it.toString() }
-            }
-            KeyEvent.META_CAPS_LOCK_ON -> {
-                for (item in showCandidates) item.text = item.text.uppercase()
-                composition = composition.uppercase()
-            }
-            else -> {
-                for (item in showCandidates) item.text = item.text.lowercase()
-                composition = composition.lowercase()
-            }
-        }
+        for (item in showCandidates) item.text = applyCharCase(item.text)
+        composition = applyCharCase(composition)
         val rimeSchema = Rime.getCurrentRimeSchema()
         pinyins = when (rimeSchema) {
             CustomConstant.SCHEMA_ZH_T9 -> {
@@ -232,6 +210,19 @@ object RimeEngine {
         showComposition = composition
         preCommitText = ""
         return null
+    }
+
+    private fun applyCharCase(text: String, casePattern: String = compositionCasePattern): String {
+        val lowercaseText = text.lowercase()
+        return if (charCase == KeyEvent.META_CAPS_LOCK_ON) {
+            lowercaseText.uppercase()
+        } else {
+            buildString(lowercaseText.length) {
+                lowercaseText.forEachIndexed { index, char ->
+                    append(if (casePattern.getOrNull(index)?.isUpperCase() == true) char.uppercaseChar() else char)
+                }
+            }
+        }
     }
 
     /**

@@ -345,13 +345,15 @@ class InputView(context: Context, private val service: ImeService) : LifecycleRe
             processFunctionKey(event)
             return true
         }
-        InputModeSwitcher.resetCharCase()
         val englishCellDisable = InputModeSwitcher.isEnglish && !InputModeSwitcher.isEnglishCellEnabled
-        return when {
+        val handled = when {
             englishCellDisable -> processEnglishKey(event)
             InputModeSwitcher.isEnglish || InputModeSwitcher.isChinese -> processInput(event)
             else -> processEnglishKey(event)
         }
+        // 单击 Shift 的状态必须覆盖当前按键；处理完成后才恢复小写。
+        InputModeSwitcher.resetCharCase()
+        return handled
 //        return if(appPrefs.input.abcSearchEnglishCell.getValue() || InputModeSwitcherManager.isChinese)processInput(event) else processEnglishKey(event)
     }
 
