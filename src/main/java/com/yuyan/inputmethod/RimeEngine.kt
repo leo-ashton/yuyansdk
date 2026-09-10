@@ -14,6 +14,7 @@ import com.yuyan.inputmethod.util.DoublePinYinUtils
 import com.yuyan.inputmethod.util.LX17PinYinUtils
 import com.yuyan.inputmethod.util.QwertyPinYinUtils
 import com.yuyan.inputmethod.util.T9PinYinUtils
+import java.util.Locale
 
 object RimeEngine {
     private val keyRecordStack = KeyRecordStack()
@@ -24,7 +25,7 @@ object RimeEngine {
     private var customPhraseSize: Int = 0 // 自定义引擎候选词长度
     const val MASK_CASE_LOWER = 0
     private var charCase = 0x0000
-    // Rime 的候选词通常为小写；保留用户在当前输入串中逐字指定的大小写。
+    // 仅用于英文候选最终上屏时恢复用户逐字指定的大小写。
     private var compositionCasePattern = ""
 
     fun init() {
@@ -54,13 +55,8 @@ object RimeEngine {
         val keyCode = event.keyCode
         val keyChar = if(keyCode == KeyEvent.KEYCODE_APOSTROPHE) if(isFinish()) '/'.code else '\''.code
             else event.unicodeChar
-        val commitCasePattern = if (keyCode in KeyEvent.KEYCODE_A..KeyEvent.KEYCODE_Z) {
-            Rime.compositionText + keyChar.toChar()
-        } else {
-            compositionCasePattern
-        }
         if (keyRecordStack.pushKey(event))Rime.processKey(keyChar, event.action)
-        updateCandidatesOrCommitText(commitCasePattern)
+        updateCandidatesOrCommitText()
     }
 
     fun onDeleteKey() {
@@ -79,8 +75,22 @@ object RimeEngine {
         return if (Rime.hasRight()) {
             Rime.processKey(getRimeKeycodeByName("Page_Down"), 0)
            val candidates = Rime.getRimeContext()!!.candidates
-            for (item in candidates) {
-                item.text = applyCharCase(item.text)
+            when (charCase) {
+                KeyEvent.META_SHIFT_ON -> {
+                    for (item in candidates) {
+                        item.text = item.text.lowercase().replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.getDefault()) else it.toString() }
+                    }
+                }
+                KeyEvent.META_CAPS_LOCK_ON -> {
+                    for (item in candidates) {
+                        item.text = item.text.uppercase()
+                    }
+                }
+                else -> {
+                    for (item in candidates) {
+                        item.text = item.text.lowercase()
+                    }
+                }
             }
             candidates
         } else emptyArray()
@@ -159,11 +169,11 @@ object RimeEngine {
         }
     }
 
-    private fun updateCandidatesOrCommitText(commitCasePattern: String = compositionCasePattern): String? {
+    private fun updateCandidatesOrCommitText(): String? {
         val rimeCommit = Rime.getRimeCommit()
         if (rimeCommit != null) {
             keyRecordStack.clear()
-            preCommitText = applyCharCase(rimeCommit.commitText, commitCasePattern)
+            preCommitText = formatCommitText(rimeCommit.commitText)
             compositionCasePattern = ""
             showComposition = ""
             showCandidates = emptyList()
@@ -173,7 +183,9 @@ object RimeEngine {
         val candidates = Rime.getRimeContext()?.candidates?.asList() ?: emptyList()
         customPhraseSize = 0
         val compositionText = Rime.compositionText
-        if (compositionText.isNotEmpty()) compositionCasePattern = compositionText
+        if (getCurrentRimeSchema() == CustomConstant.SCHEMA_EN && compositionText.isNotEmpty()) {
+            compositionCasePattern = compositionText
+        }
         showCandidates = when {
             compositionText.isNotBlank() -> {
                 val phrase = CustomEngine.processPhrase(compositionText.replace("\'", ""))
@@ -193,8 +205,20 @@ object RimeEngine {
             }
         }
         var composition = getCurrentComposition(candidates)
-        for (item in showCandidates) item.text = applyCharCase(item.text)
-        composition = applyCharCase(composition)
+        when (charCase) {
+            KeyEvent.META_SHIFT_ON -> {
+                for (item in showCandidates) item.text = item.text.lowercase().replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.getDefault()) else it.toString() }
+                composition = composition.lowercase().replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.getDefault()) else it.toString() }
+            }
+            KeyEvent.META_CAPS_LOCK_ON -> {
+                for (item in showCandidates) item.text = item.text.uppercase()
+                composition = composition.uppercase()
+            }
+            else -> {
+                for (item in showCandidates) item.text = item.text.lowercase()
+                composition = composition.lowercase()
+            }
+        }
         val rimeSchema = Rime.getCurrentRimeSchema()
         pinyins = when (rimeSchema) {
             CustomConstant.SCHEMA_ZH_T9 -> {
@@ -212,15 +236,19 @@ object RimeEngine {
         return null
     }
 
-    private fun applyCharCase(text: String, casePattern: String = compositionCasePattern): String {
+    private fun formatCommitText(text: String): String {
         val lowercaseText = text.lowercase()
-        if (charCase == KeyEvent.META_CAPS_LOCK_ON) return lowercaseText.uppercase()
-        // 九键等布局会用大写键码表示按键，不能将其当作用户实际选择的大写。
-        if (getCurrentRimeSchema() != CustomConstant.SCHEMA_EN) return lowercaseText
-        return buildString(lowercaseText.length) {
-            lowercaseText.forEachIndexed { index, char ->
-                append(if (casePattern.getOrNull(index)?.isUpperCase() == true) char.uppercaseChar() else char)
+        if (getCurrentRimeSchema() == CustomConstant.SCHEMA_EN && compositionCasePattern.isNotEmpty()) {
+            return buildString(lowercaseText.length) {
+                lowercaseText.forEachIndexed { index, char ->
+                    append(if (compositionCasePattern.getOrNull(index)?.isUpperCase() == true) char.uppercaseChar() else char)
+                }
             }
+        }
+        return when (charCase) {
+            KeyEvent.META_SHIFT_ON -> lowercaseText.replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.getDefault()) else it.toString() }
+            KeyEvent.META_CAPS_LOCK_ON -> lowercaseText.uppercase()
+            else -> lowercaseText
         }
     }
 
