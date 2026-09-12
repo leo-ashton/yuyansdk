@@ -220,7 +220,10 @@ object RimeEngine {
         val rimeSchema = Rime.getCurrentRimeSchema()
         pinyins = when (rimeSchema) {
             CustomConstant.SCHEMA_ZH_T9 -> {
-                T9PinYinUtils.t9KeyToPinyin(compositionText.split('\'').firstOrNull { part -> part.isNotEmpty() && part.all { it.isUpperCase() } } ?: "")
+                // Do not derive this from Rime's preedit: it may eagerly
+                // segment 946426 as yi'nian and hide the valid xin prefix.
+                // The key record preserves the user's original T9 sequence.
+                T9PinYinUtils.t9KeyToPinyin(keyRecordStack.firstT9KeyRun())
             }
             CustomConstant.SCHEMA_ZH_DOUBLE_LX17 -> {
                 LX17PinYinUtils.lx17KeyToPinyin(compositionText.split('\'').firstOrNull { part -> part.isNotEmpty() && part.all { it.isUpperCase() } } ?: "")

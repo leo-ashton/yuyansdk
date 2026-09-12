@@ -23,6 +23,23 @@ class KeyRecordStack {
         }
     }
 
+    /**
+     * Returns the first unselected T9-key run.  Rime may eagerly split a run
+     * (for example 946426 as yi'nian), but the original keys must remain
+     * selectable so users can change that split to xin'hao.
+     */
+    fun firstT9KeyRun(): String = buildString {
+        var started = false
+        for (key in keyRecords) {
+            if (key is InputKey.T9Key) {
+                append(key)
+                started = true
+            } else if (started) {
+                break
+            }
+        }
+    }
+
     fun pushKey(event: KeyEvent): Boolean {
         val keyCode = event.keyCode
         val keyChar = event.unicodeChar
@@ -78,9 +95,13 @@ class KeyRecordStack {
         val index = (0..keyRecords.size - keys.size).indexOfFirst { start ->
             keys.indices.all { j ->
                 val record = keyRecords[start + j]
-                record.toString() == keys[j].toString() && record is InputKey.T9Key && !record.consumed
+                // Rime can mark keys as consumed after eagerly choosing a
+                // syllable. They are still valid for explicitly correcting
+                // that choice from the T9 prefix bar.
+                record.toString() == keys[j].toString() && record is InputKey.T9Key
             }
         }
+        if (index < 0) return null
         repeat(keys.size) {
             keyRecords.removeAt(index)
         }
